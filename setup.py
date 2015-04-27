@@ -4,7 +4,7 @@ requires = open('requirements.txt').read().split('\n')
 
 setup(
     name='TimesyncCLI',
-    version='0.1.0',
+    version='0.1.1',
     description='Submits time to a timesync instance [http://github.com/osuosl/timesync].',
     install_requires=requires,
     author='Dean Johnson',
