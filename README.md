@@ -8,6 +8,9 @@ Clone the repo
 
 ```sh
 git clone https://github.com/dean/timesync-cli-python
+virtualenv env
+source env/bin/activate
+pip install -r requirements.txt
 ```
 
 TODO: Put package on pypi for installation.
@@ -15,7 +18,7 @@ TODO: Put package on pypi for installation.
 
 ## Usage
 
-```timesync -help```
+```timesync --help```
 
 ## Support
 
