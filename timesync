@@ -7,6 +7,7 @@ import os
 import requests
 import pylev
 
+
 URL = 'http://localhost:3000/'
 
 
@@ -58,8 +59,7 @@ def validate(arg, endpoint, key):
 
 
 def submit_time(args):
-    resp = requests.post(URL + 'time/add',
-                         params=args)
+    resp = requests.post(URL + 'time/add', params=args)
     if resp.status_code != 200:
         print 'Response did not return a 200 error code.'
         print 'Response:'
