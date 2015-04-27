@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 requires = open('requirements.txt').read().split('\n')
 
 setup(
-    name='Timesync CLI',
+    name='TimesyncCLI',
     version='0.1.0',
     description='Submits time to a timesync instance [http://github.com/osuosl/timesync].',
     install_requires=requires,
