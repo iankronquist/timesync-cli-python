@@ -4,7 +4,7 @@ A basic CLI for the TimeSync[http://github.com/osuosl/timesync] application.
 
 ## Installation
 
-Clone the repo
+For development work:
 
 ```sh
 git clone https://github.com/dean/timesync-cli-python
@@ -13,8 +13,10 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-TODO: Put package on pypi for installation.
-
+Otherwise install from pypi:
+```sh
+pip install TimesyncCLI
+```
 
 ## Usage
 
