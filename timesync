@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import errno
 import json
 import os
 
@@ -9,8 +10,7 @@ import requests
 import pylev
 
 
-URL = 'http://localhost:3000/'
-
+config = {}
 
 def current_date():
     """ Returns today's date with the time of day stripped off. """
@@ -26,10 +26,14 @@ def get_list(endpoint):
     """ Returns a list of items from an endpoint.
         Ex. /projects will return a list of projects
     """
-    r = requests.get(URL + endpoint)
+    base_url = config['url']
+    request_url = '{}/{}'.format(base_url, endpoint)
+    r = requests.get(request_url)
     if r.status_code != 200:
-        print 'Domain %s at endpoint: %s retrieved a non-200 status code.'
-        exit(1)
+        sys.stderr.write(
+            'Domain %s at endpoint: %s \
+            retrieved a non-200 status code.'.format(base_url, endpoint))
+        exit(error.EBADRQC)
     return r.json()
 
 
@@ -62,10 +66,10 @@ def validate(arg, endpoint, key):
 def submit_time(args):
     resp = requests.post(URL + 'time/add', params=args)
     if resp.status_code != 200:
-        print 'Response did not return a 200 error code.'
-        print 'Response:'
-        print '\tStatus Code: %d' % resp.status_code
-        print '\tMessage: %s' % resp.text
+        sys.stderr.write('Response did not return a 200 error code.\n')
+        sys.stderr.write('Response:\n')
+        sys.stderr.write('\tStatus Code: %d\n' % resp.status_code)
+        sys.stderr.write('\tMessage: %s\n' % resp.text)
         exit(1)
     return resp.text
 
@@ -82,7 +86,7 @@ def parse_all_args():
                         type=int)
     parser.add_argument('-u', '--user',
                         help='Username (Defaults to currently logged in user)',
-                        required=True,
+                        required=False,
                         default=currently_logged_in_user())
     parser.add_argument('-a', '--activity',
                         help='Activity Slug (Meeting, Dev, Tickets, etc.)',
@@ -99,7 +103,27 @@ def parse_all_args():
     return parser.parse_args()
 
 
+def read_config():
+    """Returns a dictionary representing the contents of the json file
+    $HOME/timesyncconf.json or a set of sensible defaults if that file does
+    not exist.
+    """
+    sensible_defaults = {
+        'url': 'http://localhost:3000',
+        'editor': 'vi',
+    }
+    # If $HOME isn't root base_path should be root.
+    base_path = os.environ.get('HOME') or '/'
+    path ='{}/.timesyncconf.json'.format(base_path)
+    if os.path.isfile(path):
+        with open(path) as f:
+            contents = json.load(f)
+            return sensible_defaults.update(contents)
+    else:
+        return sensible_defaults
+
 if __name__ == '__main__':
+    config = read_config()
     args = parse_all_args()
 
     # Validate correct projects, usernames, and activities
@@ -108,9 +132,10 @@ if __name__ == '__main__':
     if not valid:
         invalid_args.append(('project', args.project, suggestion))
 
-    valid, suggestion = validate(args.user, 'users', 'username')
-    if not valid:
-        invalid_args.append(('username', args.user, suggestion))
+    if not config.get('username'):
+        valid, suggestion = validate(args.user, 'users', 'username')
+        if not valid:
+            invalid_args.append(('username', args.user, suggestion))
 
     valid, suggestion = validate(args.activity, 'activities', 'slug')
     if not valid:
@@ -118,12 +143,12 @@ if __name__ == '__main__':
 
     # Show invalid arguments and give suggestions.
     for arg, opt, suggestion in invalid_args:
-        print "Invalid argument '%s' for option '%s'" % (opt, arg)
+        sys.stderr.write("Invalid argument '%s' for option '%s'" % (opt, arg))
         if suggestion:
-            print '\tDid you mean: %s?' % suggestion
-        print
+            sys.stderr.write('\tDid you mean: %s?' % suggestion)
+        sys.stderr.write('\n')
     if invalid_args:
-        exit(1)
+        exit(errno.EINVAL)
 
     args = vars(args)
     result = submit_time(args)
