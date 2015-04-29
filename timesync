@@ -12,6 +12,35 @@ import pylev
 
 config = {}
 
+
+template = """Project: 
+Activity: 
+Duration: 
+"""
+
+
+def get_checkin_with_editor():
+    args = {}
+    tmp_file_name = '/tmp/timesync-checkin'
+    editor = config.get('editor') or os.environ.get('EDITOR') or 'vi'
+    with open(tmp_file_name, 'w') as f:
+        f.write(template)
+    pid = os.fork()
+    if pid == 0: # If child process
+        os.execvp(editor, [editor])
+    else: # Else parent process
+        os.wait(pid)
+        args = {}
+        # TODO: create a more robust way to read data from the file
+        with open(tmp_file_name, 'r') as f:
+            args['project'] = f.readline().replace('Project: ')
+            args['activity'] = f.readline().replace('Activity: ')
+            args['duration'] = f.readline().replace('Duration: ')
+            validate_args(args)
+        result = submit_time(args)
+        print 'Submission Successful!'
+
+
 def current_date():
     """ Returns today's date with the time of day stripped off. """
     return str(datetime.datetime.now()).split()[0]
@@ -26,6 +55,7 @@ def get_list(endpoint):
     """ Returns a list of items from an endpoint.
         Ex. /projects will return a list of projects
     """
+    global config
     base_url = config['url']
     request_url = '{}/{}'.format(base_url, endpoint)
     r = requests.get(request_url)
@@ -100,6 +130,10 @@ def parse_all_args():
     parser.add_argument('--date',
                         help='Date Worked (Default is the current day)',
                         default=current_date())
+    parser.add_argument('-e', '--use-editor',
+                        help='Open the user\'s favorite editor to get data',
+                        required=false)
+
     return parser.parse_args()
 
 
@@ -116,41 +150,43 @@ def read_config():
     base_path = os.environ.get('HOME') or '/'
     path ='{}/.timesyncconf.json'.format(base_path)
     if os.path.isfile(path):
-        with open(path) as f:
+        with open(path, 'r') as f:
             contents = json.load(f)
             return sensible_defaults.update(contents)
     else:
         return sensible_defaults
 
-if __name__ == '__main__':
-    config = read_config()
-    args = parse_all_args()
 
+def validate_args(args):
     # Validate correct projects, usernames, and activities
     invalid_args = []
-    valid, suggestion = validate(args.project, 'projects', 'name')
+    valid, suggestion = validate(args.get('project'), 'projects', 'name')
     if not valid:
-        invalid_args.append(('project', args.project, suggestion))
+        invalid_args.append(('project', args.get('project'), suggestion))
 
     if not config.get('username'):
-        valid, suggestion = validate(args.user, 'users', 'username')
+        valid, suggestion = validate(args.get('user'), 'users', 'username')
         if not valid:
-            invalid_args.append(('username', args.user, suggestion))
+            invalid_args.append(('username', args.get('args.user'), suggestion))
 
-    valid, suggestion = validate(args.activity, 'activities', 'slug')
+    valid, suggestion = validate(args.get('activity'), 'activities', 'slug')
     if not valid:
-        invalid_args.append(('activity', args.activity, suggestion))
+        invalid_args.append(('activity', args.get('activity'), suggestion))
 
-    # Show invalid arguments and give suggestions.
-    for arg, opt, suggestion in invalid_args:
-        sys.stderr.write("Invalid argument '%s' for option '%s'" % (opt, arg))
-        if suggestion:
-            sys.stderr.write('\tDid you mean: %s?' % suggestion)
-        sys.stderr.write('\n')
+    if args.get('duration') and not args.get('duration').isdigit():
+        invalid_args.append(('duration', args.get('duration'),
+                            'should be an integer value representing minutes')
+
+    print_args_diagnostides(invalid_args)
     if invalid_args:
         exit(errno.EINVAL)
 
+
+if __name__ == '__main__':
+    config = read_config()
+    args = parse_all_args()
     args = vars(args)
+    validate_args(args)
     result = submit_time(args)
     print 'Submission Successful!'
     for k, v in args.items():
